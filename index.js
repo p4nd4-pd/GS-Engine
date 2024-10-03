@@ -46,3 +46,5 @@
  *         
  * - Avvio del processo dedicato all'aggiornamento Run-Time della revenue.
 */
+
+console.log('GS-Engine');
