@@ -1,48 +1,125 @@
-# GS-Engine
+# Casino Reporting Microservice
 
-- Preparazione dell'HTTP endpoint;
-- Preparazione dell'endpoint WS;
+## Descrizione
 
-- Stabilimento della connessione con il ServiceManager e recupero dei dati sensibili per l'inizializzazione dell'engine;
-- Stabilimento della connessione con il database;
+Questo microservizio è progettato per calcolare e gestire la reportistica in tempo reale per un casinò online. Il sistema si occupa di raccogliere dati finanziari, metriche di gioco e informazioni sugli utenti per generare report accurati e aggiornati. I dati includono informazioni su giocatori, agenti, commissioni, provider e altri parametri critici per il funzionamento di un casinò online.
 
-- Recupero della lista dei provider;
-- Recupero della lista degli agenti, ordinati per tipo di commissione ed eventuali dati (GGR %, commissione %, provider %);
+### Funzionalità principali:
 
-- Recupero della lista dei giocatori (interessati al algoritmo):
--     L'architettura dell'engine prevede che il calcolo della reportistica in tempo reale venga effettuato
--     esclusivamente per i giocatori connessi durante un arco di tempo definito (preferibilmente continuo),
--     dall'inizio dell'algoritmo fino alla sua terminazione.
+- Gestione di reportistica in tempo reale per giocatori connessi.
+- Ottimizzazione delle risorse grazie a un'architettura che minimizza il carico sul database.
+- Sincronizzazione dei dati sensibili tramite un controller remoto (ServiceManager).
+- Suddivisione dei processi per la gestione dei pagamenti e delle commissioni.
+- Aggiornamenti in tempo reale delle metriche di revenue.
 
--     Per ridurre il carico sul database e sfruttare al massimo le risorse della macchina, l'algoritmo evita
--     una connessione continua al database, utilizzando invece i dati precedentemente scaricati durante
--     l'inizializzazione e la preparazione dell'engine (come i costi dei provider, la lista degli agenti, le
--     percentuali di GGR, commissioni, ecc.).
+## Architettura
 
--     Per evitare errori di disallineamento dei dati, l'engine prevede la gestione degli aggiornamenti tramite
--     un endpoint e delega al ServiceManager la piena responsabilità della sincronizzazione dei dati sensibili
--     necessari per il calcolo.
+Il microservizio segue un'architettura modulare suddivisa in vari componenti:
 
--     Durante questa fase, l'engine invia una richiesta al controller remoto (ServiceManager) per ottenere
--     la lista dei giocatori online e i dati necessari per il corretto funzionamento del calcolo (come skin_id,
--     user_id e parent_id, ovvero l'agente con il ruolo di 'shop').
+1. **HTTP Endpoint**
 
--     La lista recuperata viene memorizzata per un periodo di tempo definito (preferibilmente fino alla chiusura
--     della connessione) e utilizzata per eventuali calcoli successivi (report e analisi).
+   - Espone un'interfaccia HTTP per interagire con il microservizio e richiedere dati di reportistica.
 
-- Preparazione e suddivisione dei processi:
--      Inizializzazione dei controller Pre-loader e Up-loader per l'aggiornamento e il recupero dei dati dal database;
--      L'engine inizializza la timeline dei processi statici, come:
--          * Calcolo della reportistica stabile, con aggiornamento dei dati nel database - alla fine di ogni ora;
--          * Esecuzione dei pagamenti turnover - ogni lunedì della settimana;
--          * Esecuzione dei pagamenti GGR e commissioni - ogni primo lunedì del mese;
+2. **WebSocket Endpoint (WS)**
 
-- Pre-calcolo della reportistica:
--      In questa fase, l'engine inizializza il recupero dei dati (che possono essere particolarmente gravosi per il database)
--      riguardanti i totali delle scommesse di casinò e sport (poker opzionale), su un range di date strutturate in base
--      ai profili commissioniali della sottorete coinvolta nei cambiamenti della reportistica
--      (commissionale -> primo lunedì e ultima domenica del mese; costi -> dal 1° al 31/30 del mese) e successivamente
--      esegue il calcolo della revenue. I dati ottenuti vengono caricati nel database e poi utilizzati per i futuri
--      aggiornamenti Run-Time.
+   - Permette una connessione in tempo reale per aggiornare dinamicamente i dati senza necessità di richieste continue.
 
-- Avvio del processo dedicato all'aggiornamento Run-Time della revenue.
+3. **ServiceManager**
+
+   - Stabilisce una connessione con un controller remoto per il recupero e la gestione dei dati sensibili (es. credenziali, configurazioni, dati degli utenti).
+
+4. **Database**
+   - Connessione al database per il recupero di informazioni sui provider, agenti e giocatori. L'algoritmo minimizza il carico sul database scaricando i dati necessari durante l'inizializzazione e utilizzando tali dati per le elaborazioni future.
+
+## Task principali
+
+### Preparazione degli Endpoint
+
+- **HTTP Endpoint**: per la comunicazione con il microservizio.
+- **WebSocket Endpoint**: per aggiornamenti in tempo reale.
+
+### Connessioni
+
+- **Connessione con il ServiceManager**: per il recupero di dati sensibili necessari per l'inizializzazione dell'engine.
+- **Connessione con il database**: per ottenere e memorizzare dati rilevanti, come giocatori, provider, agenti e percentuali di commissioni.
+
+### Recupero dei Dati
+
+- **Lista dei provider**: per ottenere le informazioni sui fornitori di servizi di gioco.
+- **Lista degli agenti**: include dati come percentuali di GGR (Gross Gaming Revenue), commissioni, percentuali di provider.
+- **Lista dei giocatori**: recupera i giocatori interessati all'algoritmo, limitando il calcolo ai giocatori connessi durante un determinato arco di tempo.
+
+### Gestione dei Processi
+
+- **Pre-loader e Up-loader**: controller per l'aggiornamento e il recupero dei dati dal database.
+- **Processi a lungo termine**:
+  - **Reportistica oraria**: calcolo e aggiornamento della reportistica alla fine di ogni ora.
+  - **Pagamenti turnover**: eseguiti ogni lunedì.
+  - **Pagamenti GGR e commissioni**: eseguiti il primo lunedì di ogni mese.
+
+### Pre-calcolo della Reportistica
+
+- Recupero dei dati gravosi (scommesse casinò, sport, poker) per eseguire il calcolo della revenue in anticipo. Questi dati vengono strutturati in base ai profili commissioniali e successivamente utilizzati per aggiornamenti futuri.
+
+### Aggiornamento Run-Time
+
+- Un processo continuo per aggiornare la revenue in tempo reale, monitorando costantemente vincite, scommesse e commissioni.
+
+## Tecnologie utilizzate
+
+- **Node.js**: Ambiente di runtime per eseguire il codice JavaScript.
+- **Express**: Framework per gestire gli endpoint HTTP.
+- **WebSocket**: Protocollo per la comunicazione in tempo reale.
+- **PostgreSQL/MySQL**: Database relazionale per memorizzare e gestire i dati.
+- **ServiceManager**: Controller remoto per la sincronizzazione dei dati sensibili.
+
+## Avvio del Progetto
+
+### Prerequisiti
+
+- Node.js (versione >= 14.x)
+- Database SQL (PostgreSQL o MySQL)
+
+### Installazione
+
+1. Clona il repository:
+
+   ```bash
+   git clone <repository-url>
+   cd nome-progetto
+   ```
+
+2. Installa le dipendenze:
+
+   ```bash
+   npm install
+   ```
+
+3. Configura il file `.env` con le credenziali del database e del ServiceManager.
+
+### Avvio del Microservizio
+
+- Per avviare il microservizio in modalità di sviluppo:
+
+  ```bash
+  npm run dev
+  ```
+
+- Per avviare il microservizio in modalità di produzione:
+  ```bash
+  npm start
+  ```
+
+## Utilizzo
+
+1. **Recupero dei report tramite HTTP**: Effettua richieste GET/POST all'endpoint HTTP esposto.
+2. **Connessione tramite WebSocket**: Utilizza l'endpoint WS per ricevere aggiornamenti in tempo reale.
+3. **Gestione dei pagamenti e delle commissioni**: I processi vengono eseguiti automaticamente su base settimanale e mensile.
+
+## Contributi
+
+I contributi sono benvenuti. Per contribuire, apri una pull request o crea una nuova issue per segnalare bug o suggerimenti.
+
+## Licenza
+
+Questo progetto è distribuito sotto licenza MIT. Consulta il file `LICENSE` per maggiori informazioni.
