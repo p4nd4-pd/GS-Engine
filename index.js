@@ -1,3 +1,4 @@
+console.log('GS-Engine');
 /**
  * - Preparazione dell'HTTP endpoint;
  * - Preparazione dell'endpoint WS;
@@ -46,5 +47,3 @@
  *         
  * - Avvio del processo dedicato all'aggiornamento Run-Time della revenue.
 */
-
-console.log('GS-Engine');
