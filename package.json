@@ -1,0 +1,14 @@
+{
+  "name": "gsengine",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "dev"
+  },
+  "author": "GameSolutions",
+  "license": "ISC",
+  "dependencies": {
+    "node": "^22.9.0"
+  }
+}
