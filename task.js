@@ -48,3 +48,23 @@ console.log('GS-Engine');
  * - Avvio del processo dedicato all'aggiornamento Run-Time della revenue.
 */
 
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware per il parsing del body delle richieste JSON
+app.use(express.json());
+
+// Endpoint base
+app.get('/', (req, res) => {
+    res.send('Benvenuto nel microservizio di esempio!');
+});
+
+app.post('/', (req, res) => {
+    res.send('Benvenuto nel microservizio di esempio!');
+});
+
+// Avvia il server
+app.listen(PORT, () => {
+    console.log(`Server avviato sulla porta ${PORT}`);
+});
