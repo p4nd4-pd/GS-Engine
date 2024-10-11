@@ -49,21 +49,11 @@ const _uploader = new Uploader(_database); // create a uploader conroller with d
 
 const _users_manager = new UsersManager();
 
-const _report = new Report(); // define module
-
-/* ---------------------------------------------------------------------- */
-    const _event_manager = new EventEmitter();
-    _event_manager.on('static_reprt_calcolate_fine', () => {
-        console.warn('Calcolating executed!');
-    });
-/* ---------------------------------------------------------------------- */
+const _service = new Service(_service_config, _preloader, _uploader);
 
 
-const _service = new Service(_service_config, _preloader, _uploader, _report);
+await _service.initializeService(new EventEmitter());
+await _service.initializeModules(new Report()); // params not used
 
-
-await _service.initializeService(_event_manager);
-await _service.initializeModules();
-
-// Avvia Report
+// Avvia Service con modulo Report
 _service.start();

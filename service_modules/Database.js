@@ -96,6 +96,37 @@ class Database {
         if (DATA.PROFILE_TYPE_NOT) {
             query = query.where('profile_type', '!=', DATA.PROFILE_TYPE_NOT);
         }
+
+        if (DATA.RETURN_TYPE === 'GET_AGENTS_BY_PROFILE_TYPE') {
+            // Seleziona i campi richiesti degli agenti
+            let agentsQuery = this.db('users')
+                .whereNotIn('role_type', ['players', 'fast_player'])
+                .whereNotNull('profile_type')
+                .where('profile_type', '!=', '');
+
+            // Se SELECT è definito, usalo, altrimenti seleziona i campi di default
+            if (SELECT && SELECT.length > 0) {
+                agentsQuery = agentsQuery.select(...SELECT);
+            } else {
+                agentsQuery = agentsQuery.select('id', 'parent_id', 'username', 'role_type', 'last_activity', 'profile_type');
+            }
+
+            // Esegui la query per ottenere gli agenti
+            const agentsResult = await agentsQuery;
+
+            // Raggruppa gli agenti per profile_type
+            const groupedAgents = agentsResult.reduce((acc, agent) => {
+                const { profile_type } = agent;
+                if (!acc[profile_type]) {
+                    acc[profile_type] = [];
+                }
+                acc[profile_type].push(agent);
+                return acc;
+            }, {});
+
+            // Ritorna l'oggetto raggruppato
+            return groupedAgents;
+        }
     
         if (DATA.RETURN_TYPE === 'GET_LIST_BY_LIMIT') {
             let __TOTAL_ROWS = 0;

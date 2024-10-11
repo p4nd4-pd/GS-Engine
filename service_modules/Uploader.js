@@ -11,6 +11,8 @@ class Uploader {
         this.SKIN_ID = data.SKIN_ID;
         this.SKIN_NAME = data.SKIN_NAME;
         this.AUTH_TOKEN = data.AUTH_TOKEN;
+
+        this._event_manager = data._event_manager;
     }
 
 } export default Uploader;

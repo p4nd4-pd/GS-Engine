@@ -6,7 +6,7 @@ import Report from "./service_modules/Report.js";
 import cron from 'node-cron';
 
 class Service {
-    constructor(_config, _preloader, _uploader, _report) {
+    constructor(_config, _preloader, _uploader) {
 
         this.AUTH_TOKEN = _config.AUTH_TOKEN || 'local_mode_token';
         this.SKIN_NAME = _config.SKIN_NAME || 'local_mode_skin';
@@ -22,36 +22,34 @@ class Service {
             this._uploader = _uploader;
         } else console.warn('Only instance of Uploader allowed.');
 
-        if (_report instanceof Report) {
-            this._report = _report;
-        } else console.warn('Only instance of Report allowed.');
-
         // define a datemanager for commissional and cost month ranges
     }
 
-    initializeService(_event_manager) {
+    async initializeService(_event_manager) {
         this._event_manager = _event_manager;
 
         this._preloader._init(this); // create a identificate network fingerprint
         this._uploader._init(this); // create a identificate network fingerprint
     }
 
-    async initializeModules() {
-        let _range = { startDate: '2024-10-01', endDate: '2024-10-31' };
-        let {casino_history} = await this._preloader.initializeReport(_range);
-        this._report._init(casino_history);
+    async initializeModules(_modules) {
+        this._module = new Report();
+        this._module._init(this);
     }
 
     start() {
+
+        this._module.onStart('Start executed.');
+
         // Esegui un'operazione ogni 10 minuti
         cron.schedule('*/1 * * * *', () => {
-            console.warn('Start re-calcolating report...');
-            this._event_manager.emit('static_reprt_calcolate_fine')
+            this._module.onFixedUpdate();
+            this._event_manager.emit('bet', {}); // test
         });
 
         // Esegui un'operazione ogni ora (al minuto 0)
         cron.schedule('0 * * * *', () => {
-            console.warn('this.calculateEveryHour();');
+            this._module.onFixedUpdate();
         });
 
         // Esegui un'operazione ogni giorno a mezzanotte
@@ -59,9 +57,15 @@ class Service {
             console.warn('this.calculateEveryDay();');
         });
 
-        // Esegui un'operazione ogni lunedì alle 10:00
-        cron.schedule('0 10 * * 1', () => {
+        // Esegui un'operazione ogni lunedì alle 12:00
+        cron.schedule('0 12 * * 1', () => {
             console.warn('this.calculateEveryMonday();');
+        });
+
+
+        // define run-in listeners
+        this._event_manager.on('bet', (_error, _data) => {
+            this._module.onUpdate(_data);
         });
     }
 } export default Service;
