@@ -37,9 +37,9 @@ class Service {
         this._module._init(this);
     }
 
-    start() {
+    async start() {
 
-        this._module.onStart('Start executed.');
+        await this._module.onStart();
 
         // Esegui un'operazione ogni 10 minuti
         cron.schedule('*/1 * * * *', () => {

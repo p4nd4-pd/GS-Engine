@@ -28,6 +28,10 @@ class Database {
         });
     }
 
+    /** ============================================================================
+     *  Skins methods
+     *  ============================================================================
+    */
     async GET_SKIN_DATA(DATA) {
         // Costruzione della query
         let query = this.db('skins');
@@ -60,6 +64,37 @@ class Database {
             throw error;
         }
     }
+
+    async GET_SKIN_PROVIDERS_LIST__CRONE(skin_id) {
+        try {
+            // Inizia la costruzione della query
+            let query = this.db('skins_providers')
+                .join('providers', 'providers.id', 'skins_providers.provider_id')
+                .select('providers.name as provider_name', 'skins_providers.*'); // Seleziona i campi necessari
+
+            // Aggiungi un filtro per 'skin_id' se non è 'all'
+            if (skin_id !== 'all') {
+                query = query.where('skins_providers.skin_id', skin_id);
+            }
+
+            // Filtro per 'view'
+            query = query.where('skins_providers.view', '1');
+
+            // Esegui la query
+            const result = await query;
+
+            // Controlla se ci sono risultati
+            if (result && result.length > 0) {
+                return result;
+            } else {
+                return null;
+            }
+        } catch (error) {
+            console.error('Error retrieving skin providers list:', error);
+            throw error;
+        }
+    }
+
 
     async GET_USERS_CRONE(DATA, SELECT = null) {
     
