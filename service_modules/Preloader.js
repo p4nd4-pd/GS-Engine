@@ -1,5 +1,4 @@
 import Database from './Database.js';
-import knex from 'knex';
 
 class Preloader {
     constructor(_database, _mysql = {}) {
@@ -174,58 +173,172 @@ class Preloader {
 
 
 
-    async GET_AGENT_ABOVE(user_id) {
-        try {
-            // Connessione al database (assumendo che `this.db` sia l'istanza di Knex.js)
-            const db = this._database.db;
 
-            // Definisci la query SQL per la CTE ricorsiva
-            const sql = `
-                WITH RECURSIVE UserHierarchy AS (
-                    SELECT u.id, u.role_type, u.parent_id, 1 AS level
-                    FROM users u
-                    WHERE u.id = ?
 
-                    UNION ALL
 
-                    SELECT u.id, u.role_type, u.parent_id, uh.level + 1
-                    FROM users u
-                    JOIN UserHierarchy uh ON u.id = uh.parent_id
-                )
-                SELECT id, role_type, parent_id, level
-                FROM UserHierarchy;
-            `;
+    async GET_AGENTS_BY_PROFILE_TYPE_WITH_PARENTS() {
+        // Step 1: Query agents excluding 'players' and 'fast_player'
+        const agents = await this._database.db('users')
+            .whereNotIn('role_type', ['players', 'fast_player'])
+            .whereNotNull('profile_type')
+            .where('profile_type', '!=', '')
+            .select('id', 'parent_id', 'username', 'role_type', 'profile_type');
 
-            // Esegui la query con Knex
-            const results = await db.raw(sql, [user_id]);
+        // Step 2: Get parent hierarchy for each agent
+        const agentsWithParents = await Promise.all(agents.map(async agent => {
+            const parentHierarchy = await this.getParentPath(agent.parent_id);
+            return {
+                id_agent: agent.id,
+                username: agent.username,
+                role_type: agent.role_type,
+                profile_type: agent.profile_type,
+                parent_path: parentHierarchy
+            };
+        }));
 
-            // Restituisci i risultati (rows)
-            return results.rows || [];
-        } catch (error) {
-            console.error('Error fetching agent hierarchy:', error);
-            throw error;
-        }
+        // Step 3: Group agents by profile_type
+        const groupedAgents = agentsWithParents.reduce((acc, agent) => {
+            const { profile_type, id_agent } = agent;
+            if (!acc[profile_type]) {
+                acc[profile_type] = {};//[]
+            }
+            //acc[profile_type].push(agent);
+            acc[profile_type][id_agent] = {
+                username: agent.username,
+                role_type: agent.role_type,
+                parent_path: agent.parent_path
+            };
+            return acc;
+        }, {});
+
+        // Step 4: Return the grouped object
+        return groupedAgents;
     }
 
-    async GET_AGENT_HIERARCHY() {
-        try {
-            // Connessione al database (assumendo che `this.db` sia l'istanza di Knex.js)
-            const db = this._database.db;
+    // Helper function to recursively get parent path
+    async getParentPath(parent_id) {
+        const parentPath = {};
 
-            // Definisci la query SQL per la CTE ricorsiva
-            const sql = `
-            `;
+        let currentParentId = parent_id;
 
-            // Esegui la query con Knex
-            const results = await db.raw(sql);
+        while (currentParentId) {
+            const parent = await this._database.db('users')
+                .where('id', currentParentId)
+                .select('id', 'role_type', 'parent_id')
+                .first();
 
-            // Restituisci i risultati (rows)
-            return results[0] || [];
-        } catch (error) {
-            console.error('Error fetching agent hierarchy:', error);
-            throw error;
+            if (parent) {
+                parentPath[parent.role_type] = parent.id;
+                currentParentId = parent.parent_id; // Move to the next parent in the hierarchy
+            } else {
+                currentParentId = null; // Stop if no parent is found
+            }
         }
+
+        return parentPath;
     }
 
+
+
+    async GET_USER_PROVIDERS__CRONE(DATA, SELECT = null) {
+        let query = this._database.db('users_providers');
+
+        if (DATA.USER_ID) {
+            query = query.where('user_id', DATA.USER_ID);
+        }
+
+        if (DATA.USER_LIST_ID) {
+            query = query.whereIn('user_id', DATA.USER_LIST_ID);
+        }
+    
+        if (DATA.PROVIDER_ID) {
+            query = query.where('provider_id', DATA.PROVIDER_ID);
+        }
+
+        if (DATA.RETURN_TYPE && DATA.RETURN_TYPE === 'GROUP_BY_USER_ID') {
+            if (SELECT && SELECT.length > 0) {
+                query = query.select(...SELECT);
+            } else {
+                query = query.select('user_id', 'provider_id', 'percentage', 'hide');
+            }
+
+            const result = await query;
+
+            const groupedresult = result.reduce((acc, provider) => {
+                const { user_id, provider_id } = provider;
+                if (!acc[user_id]) {
+                    acc[user_id] = {};
+                }
+                acc[user_id][provider_id] = {
+                    percentage: provider.percentage,
+                    hide: provider.hide
+                }
+                return acc;
+            }, {});
+
+            return groupedresult;
+        }
+
+        if (SELECT && SELECT.length > 0) {
+            query = query.select(...SELECT);
+        } else {
+            query = query.select('*');
+        }
+    
+        const es_results = await query;
+    
+        return es_results;
+    }
+
+    async GET_USER_COMMISSION__CRONE(DATA, SELECT = null) {
+        let query = this._database.db('COMMISIONAL_PROFILES');
+
+        if (DATA.USER_ID) {
+            query = query.where('user_id', DATA.USER_ID);
+        }
+
+        if (DATA.USER_LIST_ID) {
+            query = query.whereIn('user_id', DATA.USER_LIST_ID);
+        }
+
+        if (DATA.RETURN_TYPE && DATA.RETURN_TYPE === 'GROUP_BY_USER_ID') {
+            if (SELECT && SELECT.length > 0) {
+                query = query.select(...SELECT);
+            } else {
+                query = query.select(
+                    'user_id',
+                    'casino_perc_first_range', 'casino_perc_second_range', 'casino_perc_third_range',
+                    'casinolive_perc_first_range', 'casinolive_perc_second_range', 'casinolive_perc_third_range',
+                    'virtual_perc_first_range', 'virtual_perc_second_range', 'virtual_perc_third_range',
+                    'poker_perc_second_range', 'poker_perc_first_range', 'poker_perc_third_range',
+                    'sport_perc_first_range', 'sport_perc_second_range', 'sport_perc_third_range',
+                    'global_perc_first_range', 'global_perc_second_range', 'global_perc_third_range'
+                );
+            }
+
+            const result = await query;
+
+            const groupedresult = result.reduce((acc, commission) => {
+                const { user_id } = commission;
+                if (!acc[user_id]) {
+                    acc[user_id] = {};
+                }
+                acc[user_id] = commission;
+                return acc;
+            }, {});
+
+            return groupedresult;
+        }
+
+        if (SELECT && SELECT.length > 0) {
+            query = query.select(...SELECT);
+        } else {
+            query = query.select('*');
+        }
+    
+        const es_results = await query;
+    
+        return es_results;
+    }
 
 } export default Preloader;
