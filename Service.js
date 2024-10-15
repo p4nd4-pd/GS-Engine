@@ -43,13 +43,13 @@ class Service {
 
         // Esegui un'operazione ogni 10 minuti
         cron.schedule('*/1 * * * *', () => {
-            this._module.onFixedUpdate();
+            //this._module.onFixedUpdate();
             this._event_manager.emit('bet', {}); // test
         });
 
         // Esegui un'operazione ogni ora (al minuto 0)
         cron.schedule('0 * * * *', () => {
-            this._module.onFixedUpdate();
+            //this._module.onFixedUpdate();
         });
 
         // Esegui un'operazione ogni giorno a mezzanotte

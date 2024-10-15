@@ -16,7 +16,9 @@ class Report {
     }
 
     async onStart() {
-        
+
+        console.time('onStart');
+
         // estract skin provider list with %
         this.PROVIDERS = await this._preloader.GET_SKIN_PROVIDERS_LIST__CRONE();
         this.PROVIDERS = this.PROVIDERS.reduce((acc, provider) => {
@@ -36,62 +38,157 @@ class Report {
         
 
         // Extract costs
-        let user_providers = await this._preloader.GET_USER_PROVIDERS__CRONE({ USER_LIST_ID: Object.keys(this.COST_SUBNET), RETURN_TYPE: 'GROUP_BY_USER_ID' });
-        Object.entries(user_providers).forEach(([userId, providers]) => {
-            if (this.COST_SUBNET[userId]) {
-                this.COST_SUBNET[userId]['PROVIDERS'] = providers;
-            }
-        });
-
+        if (this.COST_SUBNET) {
+            let user_providers_cost = await this._preloader.GET_USER_PROVIDERS__CRONE({ USER_LIST_ID: Object.keys(this.COST_SUBNET), RETURN_TYPE: 'GROUP_BY_USER_ID' });
+            Object.entries(user_providers_cost).forEach(([userId, providers]) => {
+                if (this.COST_SUBNET[userId]) {
+                    this.COST_SUBNET[userId]['PROVIDERS'] = providers;
+                }
+            });
+        }
+        
 
         // Extract commissions
-        let user_commission = await this._preloader.GET_USER_COMMISSION__CRONE({ USER_LIST_ID: Object.keys(this.COMMISSION_SUBNET), RETURN_TYPE: 'GROUP_BY_USER_ID' });
-        Object.entries(user_commission).forEach(([userId, commission]) => {
-            if (this.COMMISSION_SUBNET[userId]) {
-                this.COMMISSION_SUBNET[userId]['COMMISSION'] = commission;
+        if (this.COMMISSION_SUBNET) {
+            let user_commission = await this._preloader.GET_USER_COMMISSION__CRONE({ USER_LIST_ID: Object.keys(this.COMMISSION_SUBNET), RETURN_TYPE: 'GROUP_BY_USER_ID' });
+            Object.entries(user_commission).forEach(([userId, commission]) => {
+                if (this.COMMISSION_SUBNET[userId]) {
+                    this.COMMISSION_SUBNET[userId]['COMMISSION'] = commission;
+                }
+            });
+
+
+            // Extract shop IDs & turnover
+            const shopsIDs_commission = Object.keys(this.COMMISSION_SUBNET).filter(id => {
+                return this.COMMISSION_SUBNET[id].role_type === 'shop';
+            });
+            if (shopsIDs_commission) {
+                let shops_turnover_commission = await this._preloader.GET_USER_TURNOVER__CRONE({ USER_LIST_ID: shopsIDs_commission, RETURN_TYPE: 'GROUP_BY_USER_ID' });
+                Object.entries(shops_turnover_commission).forEach(([userId, turnover]) => {
+                    if (this.COMMISSION_SUBNET[userId]) {
+                        this.COMMISSION_SUBNET[userId]['TURNOVER'] = turnover;
+                    }
+                });
             }
-        });
+        }
+        
 
-
-        // Extract master IDs & costs
-        const masterIDs = Object.keys(this.COST_COMMISSION_SUBNET).filter(id => {
-            return this.COST_COMMISSION_SUBNET[id].role_type === 'master';
-        });
-        let master_providers = await this._preloader.GET_USER_PROVIDERS__CRONE({ USER_LIST_ID: masterIDs, RETURN_TYPE: 'GROUP_BY_USER_ID' });
-        Object.entries(master_providers).forEach(([userId, providers]) => {
-            if (this.COST_COMMISSION_SUBNET[userId]) {
-                this.COST_COMMISSION_SUBNET[userId]['PROVIDERS'] = providers;
+        // Extract cost & commissions
+        if (this.COST_COMMISSION_SUBNET) {
+            // Extract master IDs & costs
+            const masterIDs_cost_commission = Object.keys(this.COST_COMMISSION_SUBNET).filter(id => {
+                return this.COST_COMMISSION_SUBNET[id].role_type === 'master';
+            });
+            if (masterIDs_cost_commission) {
+                let master_providers_cost_commission = await this._preloader.GET_USER_PROVIDERS__CRONE({ USER_LIST_ID: masterIDs_cost_commission, RETURN_TYPE: 'GROUP_BY_USER_ID' });
+                Object.entries(master_providers_cost_commission).forEach(([userId, providers]) => {
+                    if (this.COST_COMMISSION_SUBNET[userId]) {
+                        this.COST_COMMISSION_SUBNET[userId]['PROVIDERS'] = providers;
+                    }
+                });
             }
-        });
+           
 
 
-        // Extract non-master IDs & commissions
-        const nonMasterIDs = Object.keys(this.COST_COMMISSION_SUBNET).filter(id => {
-            return this.COST_COMMISSION_SUBNET[id].role_type !== 'master';
-        });
-        let agents_commission = await this._preloader.GET_USER_COMMISSION__CRONE({ USER_LIST_ID: nonMasterIDs, RETURN_TYPE: 'GROUP_BY_USER_ID' });
-        Object.entries(agents_commission).forEach(([userId, commission]) => {
-            if (this.COST_COMMISSION_SUBNET[userId]) {
-                this.COST_COMMISSION_SUBNET[userId]['COMMISSION'] = commission;
+            // Extract non-master IDs & commissions
+            const nonMasterIDs_cost_commission = Object.keys(this.COST_COMMISSION_SUBNET).filter(id => {
+                return this.COST_COMMISSION_SUBNET[id].role_type !== 'master';
+            });
+            if (nonMasterIDs_cost_commission) {
+                let agents_cost_commission = await this._preloader.GET_USER_COMMISSION__CRONE({ USER_LIST_ID: nonMasterIDs_cost_commission, RETURN_TYPE: 'GROUP_BY_USER_ID' });
+                Object.entries(agents_cost_commission).forEach(([userId, commission]) => {
+                    if (this.COST_COMMISSION_SUBNET[userId]) {
+                        this.COST_COMMISSION_SUBNET[userId]['COMMISSION'] = commission;
+                    }
+                });
             }
-        });
+            
+
+            // Extract shop IDs & turnover
+            const shopsIDs_cost_commission = Object.keys(this.COST_COMMISSION_SUBNET).filter(id => {
+                return this.COST_COMMISSION_SUBNET[id].role_type === 'shop';
+            });
+            if (shopsIDs_cost_commission) {
+                let shops_turnover_cost_commission = await this._preloader.GET_USER_TURNOVER__CRONE({ USER_LIST_ID: shopsIDs_cost_commission, RETURN_TYPE: 'GROUP_BY_USER_ID' });
+                Object.entries(shops_turnover_cost_commission).forEach(([userId, turnover]) => {
+                    if (this.COST_COMMISSION_SUBNET[userId]) {
+                        this.COST_COMMISSION_SUBNET[userId]['TURNOVER'] = turnover;
+                    }
+                });
+            }
+        }
 
 
-
-
+        console.log([this.COST_SUBNET, this.COMMISSION_SUBNET, this.COST_COMMISSION_SUBNET]);
+        
         // ------------------------------
         console.log('onStart registered!');
+        console.timeEnd('onStart');
+
+        this.onFixedUpdate();
     }
 
     // Pre-calc & Re-calc
-    onFixedUpdate(_range) {
+    async onFixedUpdate(_req) {
 
-        console.log('COST_SUBNET: ', this.COST_SUBNET, 'COMMISSION_SUBNET: ',this.COMMISSION_SUBNET, 'COST_COMMISSION_SUBNET: ',this.COST_COMMISSION_SUBNET);
+        /*
+            parent_id: {
+                currency: {
+                    tot_bet,
+                    tot_win,
+                    tot_bet_bonus,
+                    tot_win_bonus
+                }
+            }
+            
+            provider_id: {
+                currency: {
+                    tot_bet,
+                    tot_win,
+                    tot_bet_bonus,
+                    tot_win_bonus
+                }
+            }
+        */
+        
+        console.time('onFixedUpdate');
+        
+        // crea range delle date, range per commission e per costo. unire da min a max.
+        let _range = { start_date: '2024-08-01', end_data: '2024-08-31' };
 
-        // get casino & sport transactions : group by shop : by range
+        // casino
+        let casino_history = await this._preloader.GET_BET_HISTORY__CRONE({
+            START_DATE: Math.floor(new Date(_range.start_date).getTime() / 1000),  // Converti la data in timestamp UNIX
+            END_DATE: Math.floor(new Date(_range.end_data).getTime() / 1000),      // Converti la data in timestamp UNIX
+            RETURN_TYPE: 'CALC_TOTAL_BET_BY_PARENT',              // Specifica il tipo di ritorno
+        }); console.log(casino_history);
+
+        let provider_history = await this._preloader.GET_BET_HISTORY__CRONE({
+            START_DATE: Math.floor(new Date(_range.start_date).getTime() / 1000),  // Converti la data in timestamp UNIX
+            END_DATE: Math.floor(new Date(_range.end_data).getTime() / 1000),      // Converti la data in timestamp UNIX
+            RETURN_TYPE: 'CALC_TOTAL_BET_BY_PROVIDER',              // Specifica il tipo di ritorno
+        }); console.log(provider_history);
+
+        
+        if (casino_history) {
+
+            casino_history.map(shop => console.log(shop));
+
+            const casino_history_ids = Object.keys(casino_history);
+            const commission_subnet_ids = Object.keys(this.COMMISSION_SUBNET);
+
+            const registered_casino_history = casino_history_ids.filter(id => commission_subnet_ids.includes(id));
+        }
+        
+        
+
+        //sport
+
+
 
 
         console.log('onFixedUpdate registered!', _range);
+        console.timeEnd('onFixedUpdate');
     }
     
     // Run-time-calc
@@ -164,4 +261,23 @@ class Report {
         PAY_CASINO_GGR
 
         PAY_COMMISSION
+*/
+
+
+/*
+        setInterval(() => {
+            const memoryUsage = process.memoryUsage();
+            console.log('===============================================================');
+            console.log('Utilizzo della memoria:');
+            console.log(`RSS: ${(memoryUsage.rss / 1024 / 1024).toFixed(2)} MB`);  // Resident Set Size
+            console.log(`Heap Totale: ${(memoryUsage.heapTotal / 1024 / 1024).toFixed(2)} MB`);
+            console.log(`Heap Usato: ${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)} MB`);
+            console.log(`Memoria esterna: ${(memoryUsage.external / 1024 / 1024).toFixed(2)} MB`);
+
+            const cpuUsage = process.cpuUsage();
+            console.log('Utilizzo della CPU:');
+            console.log(`User CPU time: ${cpuUsage.user / 1000} ms`);
+            console.log(`System CPU time: ${cpuUsage.system / 1000} ms`);
+            console.log('===============================================================');
+        }, 5000);  // Ripete ogni 5 secondi
 */
